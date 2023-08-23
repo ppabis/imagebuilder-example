@@ -4,6 +4,6 @@ resource "aws_imagebuilder_image_pipeline" "my-pipeline" {
   }
   name                             = "my-pipeline"
   infrastructure_configuration_arn = aws_imagebuilder_infrastructure_configuration.infra-config.arn
-  image_recipe_arn                 = "" // Will be added later
+  image_recipe_arn                 = aws_imagebuilder_image_recipe.my-image-recipe.arn
   distribution_configuration_arn   = aws_imagebuilder_distribution_configuration.distribution.arn
 }
