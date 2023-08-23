@@ -1,0 +1,61 @@
+---
+description: >
+  This component installs and configures latest Nginx on Amazon Linux 2023.
+  The config forwards all traffic from port 80 to 127.0.0.1:8080
+schemaVersion: "1.0"
+parameters:
+  - port:
+      type: string
+      description: "Port to forward to"
+      default: "8080"
+  - proxy_or_cgi:
+      type: string
+      description: "Whether to use proxy_pass or fastcgi_pass (proxy/cgi)"
+      default: "proxy"
+phases:
+  - name: build
+    steps:
+      - name: InstallNginx
+        action: ExecuteBash
+        inputs:
+          commands:
+            - yum update -y
+            - yum install nginx -y
+            - systemctl enable nginx
+            - systemctl start nginx
+      - name: ConfigureNginx
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              if [[ "{{ proxy_or_cgi }}" == "proxy" ]]; then
+                echo 'server {
+                  listen 80;
+                  location / { proxy_pass http://127.0.0.1:{{ port }}; }
+                }' > /etc/nginx/conf.d/default.conf
+              else
+                echo 'server {
+                  listen 80;
+                  location / {
+                    include fastcgi_params;
+                    fastcgi_pass 127.0.0.1:{{ port }};
+                  }
+                }' > /etc/nginx/conf.d/default.conf
+              fi
+            - systemctl restart nginx
+  - name: validate
+    steps:
+      - name: ValidateNginx
+        action: ExecuteBash
+        inputs:
+          commands:
+            - CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost)
+            - if [[ "$CODE" != "502" ]]; then exit 1; fi # Should be 502 because there's no gateway
+  - name: test
+    steps:
+      - name: TestNginx
+        action: ExecuteBash
+        inputs:
+          commands:
+            - CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost)
+            - if [[ "$CODE" != "502" ]]; then exit 1; fi # Should be 502 because there's no gateway
